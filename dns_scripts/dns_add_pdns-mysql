@@ -28,7 +28,16 @@ while [[ -z "${DOMAIN_ID}" ]]; do
 done
 
 echo "Domain ID: ${DOMAIN_ID} | FQDN: ${FQDN} | Domain: ${DOMAIN}"
-
-mysql -ss "${CREDENTIALS}" -e "INSERT INTO ${DB}.records \
- (domain_id, name, content, type,ttl,prio) VALUES \
- (${DOMAIN_ID},'_acme-challenge.${FQDN}','${TOKEN}','TXT',120,NULL);"
+# check if challenge exists update if so else insert.
+UNIQUE_ID=$(mysql -ss "${CREDENTIALS}" -e "SELECT id FROM ${DB}.records WHERE name='_acme-challenge.${FQDN}' AND type='TXT'")
+if [[ -z "${UNIQUE_ID}" ]]; then
+	mysql -ss "${CREDENTIALS}" -e "UPDATE ${DB}.records SET content='${TOKEN}' \
+	WHERE id='${UNIQUE_ID}' AND name='_acme-challenge.${FQDN}' AND type='TXT' LIMIT 1;"
+else
+	mysql -ss "${CREDENTIALS}" -e "INSERT INTO ${DB}.records \
+	(domain_id, name, content, type,ttl,prio) VALUES \
+	(${DOMAIN_ID},'_acme-challenge.${FQDN}','${TOKEN}','TXT',120,NULL);"
+fi
+#mysql -ss "${CREDENTIALS}" -e "INSERT INTO ${DB}.records \
+ #(domain_id, name, content, type,ttl,prio) VALUES \
+ #(${DOMAIN_ID},'_acme-challenge.${FQDN}','${TOKEN}','TXT',120,NULL);"
